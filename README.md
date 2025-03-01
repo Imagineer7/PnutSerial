@@ -1,4 +1,4 @@
-# PnutAltimeter Arduino Library
+# PnutSerial Arduino Library
 
 The **PnutAltimeter** library is an Arduino library designed to interface with the PerfectFlight Pnut altimeter. It simplifies reading telemetry data by handling serial communication, parsing ASCII data, managing telemetry modes, and providing robust error handling with timeouts and multi-line buffering.
 
