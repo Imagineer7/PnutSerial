@@ -1,4 +1,4 @@
-#include "PnutAltimeter.h"
+#include "PnutSerial.h"
 
 PnutAltimeter::PnutAltimeter(uint8_t rxPin, uint8_t txPin)
     : altSerial(rxPin, txPin), mode(ON_LAUNCH), firstReading(true),

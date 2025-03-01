@@ -1,5 +1,5 @@
-#ifndef PNUTALTIMETER_H
-#define PNUTALTIMETER_H
+#ifndef PNUTSERIAL_H
+#define PNUTSERIAL_H
 
 #include <Arduino.h>
 #include <SoftwareSerial.h>
