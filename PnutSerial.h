@@ -2,53 +2,101 @@
 #define PNUTSERIAL_H
 
 #include <Arduino.h>
-#include <SoftwareSerial.h>
 
-// Define telemetry modes
+// Telemetry mode: In ON_PAD mode the first reading is the ground elevation (MSL),
+// and subsequent readings are AGL altitudes. In ON_LAUNCH mode, all readings are AGL.
 enum TelemetryMode {
-    ON_PAD,    // First reading is ground elevation (MSL), subsequent values are AGL altitudes.
-    ON_LAUNCH  // All readings are AGL altitudes.
+    ON_PAD,
+    ON_LAUNCH
+};
+
+// Error codes returned by the library.
+enum PnutAltimeterError {
+    PNUT_OK = 0,
+    PNUT_ERR_TIMEOUT,
+    PNUT_ERR_NON_NUMERIC,
+    PNUT_ERR_INCOMPLETE,
+    PNUT_ERR_CHECKSUM_MISMATCH,
+    PNUT_ERR_NO_DATA,
 };
 
 class PnutAltimeter {
 public:
-    // Constructor: rxPin is where the Arduino reads the altimeter's TX.
-    // txPin is provided for compatibility, though it’s unused in our setup.
-    PnutAltimeter(uint8_t rxPin, uint8_t txPin);
+    // Constructor accepts any Stream-derived object.
+    PnutAltimeter(Stream &serial);
 
-    // Initialize serial communication with the altimeter.
-    void begin();
+    // Initialize the serial interface.
+    // For streams that support begin() (e.g., HardwareSerial), the library will attempt
+    // to initialize them with the given baud rate and configuration.
+    // For others (like many SoftwareSerial implementations), the user may need to begin() externally.
+    void begin(uint32_t baudRate = 9600, uint16_t config = SERIAL_8N1);
 
     // Set telemetry mode: ON_PAD or ON_LAUNCH.
-    void setMode(TelemetryMode newMode);
+    void setMode(TelemetryMode mode);
 
-    // Set the read timeout (in milliseconds) for a complete line.
+    // Set the read timeout (in milliseconds) for receiving a complete data line.
     void setReadTimeout(unsigned long timeoutMs);
 
-    // Read a single telemetry data point.
-    // Returns true if a valid reading is obtained and assigns the value to 'altitude'.
-    // Returns false if no valid data was received (e.g., due to a timeout or parse error).
-    bool readAltitude(int &altitude);
+    // Enable debug logging by providing a Print-derived object (e.g., Serial).
+    void setDebugOutput(Print *debugPort);
 
-    // Check if serial data is available.
-    bool available();
+    // Process incoming serial data: fill the ring buffer and parse complete lines.
+    // This function should be called frequently (for example, inside loop()).
+    void processSerial();
 
-    // Reset the state machine (e.g., when starting a new telemetry session).
+    // Retrieve the next parsed altitude reading from the internal queue.
+    // Returns PNUT_OK if a reading was available, or an error code if not.
+    PnutAltimeterError getNextReading(int &altitude);
+
+    // A convenience function that calls processSerial() and then attempts to get a reading.
+    // It waits up to the configured timeout for a valid reading.
+    PnutAltimeterError readAltitude(int &altitude);
+
+    // Reset the internal state (buffers, queues, and mode state).
     void reset();
 
-    // Get the ground elevation (only valid in ON_PAD mode after the first reading).
+    // Retrieve the ground elevation (only valid in ON_PAD mode after the first reading).
     int getGroundElevation() const;
 
 private:
-    SoftwareSerial altSerial;
-    String buffer;             // Temporary buffer for incoming serial data.
-    TelemetryMode mode;        // Telemetry mode: ON_PAD or ON_LAUNCH.
-    bool firstReading;         // True until the ground elevation (first reading) is processed.
-    int groundElevation;       // Stores the ground elevation when using ON_PAD mode.
-    unsigned long readTimeoutMs; // Maximum time to wait for a complete line (in milliseconds).
+    Stream *_serial;             // Pointer to the serial interface.
+    TelemetryMode _mode;         // Telemetry mode.
+    bool _firstReading;          // Indicates if the ground elevation has not been read yet.
+    int _groundElevation;        // Stored ground elevation in ON_PAD mode.
+    unsigned long _readTimeoutMs; // Read timeout in milliseconds.
+    Print *_debug;               // Optional debug output.
 
-    // Helper function to check if a string contains only numeric characters.
-    bool isNumeric(const String &str);
+    // Ring buffer for incoming characters.
+    static const size_t BUFFER_SIZE = 256;
+    char _ringBuffer[BUFFER_SIZE];
+    size_t _bufferHead;
+    size_t _bufferTail;
+
+    // Queue for parsed altitude values.
+    static const size_t QUEUE_SIZE = 16;
+    int _parsedQueue[QUEUE_SIZE];
+    size_t _queueHead;
+    size_t _queueTail;
+
+    // Helper functions for ring buffer management.
+    bool bufferIsEmpty() const;
+    bool bufferIsFull() const;
+    void pushToBuffer(char c);
+    bool popFromBuffer(char &c);
+    // Attempt to extract a complete line (terminated by '\n') from the ring buffer.
+    bool popLine(String &line);
+
+    // Parse a line and output a numeric altitude value.
+    // This function also checks for an optional checksum if the line contains '*'.
+    PnutAltimeterError parseLine(const String &line, int &value);
+
+    // Compute a simple checksum: the sum of ASCII values modulo 256.
+    // Used when the line format is "value*checksum" (checksum in two hex digits).
+    uint8_t computeChecksum(const String &data);
+
+    // Queue management for parsed altitude values.
+    void enqueueValue(int value);
+    bool dequeueValue(int &value);
 };
 
 #endif

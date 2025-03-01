@@ -1,6 +1,6 @@
-# PnutAltimeter Arduino Library
+# PnutSerial Arduino Library
 
-The **PnutAltimeter** library is an Arduino library designed to interface with the PerfectFlight Pnut altimeter. It simplifies reading telemetry data by handling serial communication, parsing ASCII data, managing telemetry modes, and providing robust error handling with timeouts and multi-line buffering.
+The **PnutSerial** library is an Arduino library designed to interface with the PerfectFlight Pnut altimeter. It simplifies reading telemetry data by handling serial communication, parsing ASCII data, managing telemetry modes, and providing robust error handling with timeouts and multi-line buffering.
 
 ## Features
 
@@ -32,7 +32,7 @@ The **PnutAltimeter** library is an Arduino library designed to interface with t
    Clone this repository or download the ZIP file.
 
 2. **Copy to Libraries Folder:**  
-   Place the `PnutAltimeter` folder into your Arduino libraries directory, typically found at:  
+   Place the `PnutSerial` folder into your Arduino libraries directory, typically found at:  
    `~/Documents/Arduino/libraries/`
 
 3. **Restart the Arduino IDE:**  
@@ -45,11 +45,11 @@ The **PnutAltimeter** library is an Arduino library designed to interface with t
 Below is an example sketch demonstrating how to use the library with a SoftwareSerial interface. Adjust the pins if you're using a different configuration or a hardware serial port.
 
 ```cpp
-#include <PnutAltimeter.h>
+#include <PnutSerial.h>
 
-// Initialize PnutAltimeter on SoftwareSerial pins 10 (RX) and 11 (TX)
+// Initialize PnutSerial on SoftwareSerial pins 10 (RX) and 11 (TX)
 // Note: Only the RX pin is used for receiving data from the altimeter.
-PnutAltimeter altimeter(10, 11);
+PnutSerial altimeter(10, 11);
 
 void setup() {
     Serial.begin(9600);
