@@ -11,7 +11,8 @@ PnutSerial::PnutSerial(Stream &serial)
       _bufferHead(0),
       _bufferTail(0),
       _queueHead(0),
-      _queueTail(0)
+      _queueTail(0),
+      _rawDataCallback(NULL)
 {
 }
 
@@ -61,6 +62,10 @@ void PnutSerial::processSerial() {
     // Process complete lines from the ring buffer.
     String line;
     while (popLine(line)) {
+        //If a raw data callback is set, call it with the unmodified line.
+        if (_rawDataCallback) {
+            _rawDataCallback(line);
+        }
         if (_debug) {
             _debug->print("Received line: ");
             _debug->println(line);
@@ -85,6 +90,11 @@ void PnutSerial::processSerial() {
             }
         }
     }
+}
+
+//Setter for the raw data callback
+void PnutSerial::setRawDataCallback(RawDataCallback callback) {
+    _rawDataCallback = callback;
 }
 
 // Retrieve the next parsed altitude from the internal queue.

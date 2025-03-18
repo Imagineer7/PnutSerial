@@ -3,6 +3,9 @@
 
 #include <Arduino.h>
 
+// Define a callback type for raw data logging.
+typedef void (*RawDataCallback)(const String &rawData);
+
 // Telemetry mode: In ON_PAD mode the first reading is the ground elevation (MSL),
 // and subsequent readings are AGL altitudes. In ON_LAUNCH mode, all readings are AGL.
 enum TelemetryMode {
@@ -11,7 +14,7 @@ enum TelemetryMode {
 };
 
 // Error codes returned by the library.
-enum PnutAltimeterError {
+enum PnutSerialError {
     PNUT_OK = 0,
     PNUT_ERR_TIMEOUT,
     PNUT_ERR_NON_NUMERIC,
@@ -20,10 +23,10 @@ enum PnutAltimeterError {
     PNUT_ERR_NO_DATA,
 };
 
-class PnutAltimeter {
+class PnutSerial {
 public:
     // Constructor accepts any Stream-derived object.
-    PnutAltimeter(Stream &serial);
+    PnutSerial(Stream &serial);
 
     // Initialize the serial interface.
     // For streams that support begin() (e.g., HardwareSerial), the library will attempt
@@ -46,17 +49,20 @@ public:
 
     // Retrieve the next parsed altitude reading from the internal queue.
     // Returns PNUT_OK if a reading was available, or an error code if not.
-    PnutAltimeterError getNextReading(int &altitude);
+    PnutSerialError getNextReading(int &altitude);
 
     // A convenience function that calls processSerial() and then attempts to get a reading.
     // It waits up to the configured timeout for a valid reading.
-    PnutAltimeterError readAltitude(int &altitude);
+    PnutSerialError readAltitude(int &altitude);
 
     // Reset the internal state (buffers, queues, and mode state).
     void reset();
 
     // Retrieve the ground elevation (only valid in ON_PAD mode after the first reading).
     int getGroundElevation() const;
+
+    // Set a callback to receive raw data lines.
+    void setRawDataCallback(RawDataCallback callback);
 
 private:
     Stream *_serial;             // Pointer to the serial interface.
@@ -65,6 +71,9 @@ private:
     int _groundElevation;        // Stored ground elevation in ON_PAD mode.
     unsigned long _readTimeoutMs; // Read timeout in milliseconds.
     Print *_debug;               // Optional debug output.
+
+    // Raw data callback function pointer.
+    RawDataCallback _rawDataCallback;
 
     // Ring buffer for incoming characters.
     static const size_t BUFFER_SIZE = 256;
@@ -88,7 +97,7 @@ private:
 
     // Parse a line and output a numeric altitude value.
     // This function also checks for an optional checksum if the line contains '*'.
-    PnutAltimeterError parseLine(const String &line, int &value);
+    PnutSerialError parseLine(const String &line, int &value);
 
     // Compute a simple checksum: the sum of ASCII values modulo 256.
     // Used when the line format is "value*checksum" (checksum in two hex digits).
